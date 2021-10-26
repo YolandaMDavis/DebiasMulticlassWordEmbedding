@@ -8,6 +8,79 @@ def normalize(word_vectors):
     for k, v in word_vectors.items():
         word_vectors[k] = v / np.linalg.norm(v)
 
+def calculate_main_pca_components(word_vectors):
+    """From https://github.com/uvavision/Double-Hard-Debias/blob/master/GloVe_Debias.ipynb"""
+    vectors = word_vectors.vectors
+    wv_mean = np.mean(np.array(vectors), axis=0)
+    wv_hat = vectors - wv_mean
+    main_pca = PCA()
+    main_pca.fit(wv_hat)
+    return main_pca
+
+def neutralize_and_equalize_with_frequency_removal(vocab, words, eq_sets, bias_subspace, embedding_dim, principal_component):
+    """
+    vocab - dictionary mapping words to embeddings
+    words - words to neutralize
+    eq_sets - set of equality sets
+    bias_subspace - subspace of bias from identify_bias_subspace
+    embedding_dim - dimensions of the word embeddings
+    """
+
+    if bias_subspace.ndim == 1:
+        bias_subspace = np.expand_dims(bias_subspace, 0)
+    elif bias_subspace.ndim != 2:
+        raise ValueError("bias subspace should be either a matrix or vector")
+
+    freq_vocab = vocab.copy()
+    normalize(freq_vocab)
+
+    for word in words:
+        vector = vocab[word]
+        projection = np.dot(np.dot(np.transpose(principal_component), vector), principal_component)
+        freq_vocab[word] = vector - projection
+
+    new_vocab = freq_vocab.copy()
+    for w in words:
+        # get projection onto bias subspace
+        if w in vocab:
+            v = vocab[w]
+            v_b = project_onto_subspace(v, bias_subspace)
+
+            new_v = (v - v_b) / np.linalg.norm(v - v_b)
+            #print np.linalg.norm(new_v)
+            # update embedding
+            new_vocab[w] = new_v
+
+    for eq_set in eq_sets:
+        mean = np.zeros((embedding_dim,))
+
+        #Make sure the elements in the eq sets are valid
+        cleanEqSet = []
+        for w in eq_set:
+            try:
+                _ = new_vocab[w]
+                cleanEqSet.append(w)
+            except KeyError as e:
+                pass
+
+        for w in cleanEqSet:
+            mean += new_vocab[w]
+        mean /= float(len(cleanEqSet))
+
+        mean_b = project_onto_subspace(mean, bias_subspace)
+        upsilon = mean - mean_b
+
+        for w in cleanEqSet:
+            v = new_vocab[w]
+            v_b = project_onto_subspace(v, bias_subspace)
+
+            frac = (v_b - mean_b) / np.linalg.norm(v_b - mean_b)
+            new_v = upsilon + np.sqrt(1 - np.sum(np.square(upsilon))) * frac
+
+            new_vocab[w] = new_v
+
+    return new_vocab
+
 def identify_bias_subspace(vocab, def_sets, subspace_dim, embedding_dim):
     """
     Similar to bolukbasi's implementation at

@@ -36,7 +36,7 @@ def load_legacy_w2v_as_keyvecs(w2v_file, dim=50):
     return vectors
 
 def convert_legacy_to_keyvec(legacy_w2v):
-    dim = len(legacy_w2v[legacy_w2v.keys()[0]])
+    dim = len(legacy_w2v[list(legacy_w2v.keys())[0]])
     vectors = Word2VecKeyedVectors(dim)
 
     ws = []
@@ -46,7 +46,7 @@ def convert_legacy_to_keyvec(legacy_w2v):
         ws.append(word)
         vs.append(vect)
         assert(len(vect) == dim)
-    vectors.add(ws, vs, replace=True)
+    vectors.add_vectors(ws, vs, replace=True)
     return vectors
 
 def load_w2v(w2v_file, binary=True, limit=None):
