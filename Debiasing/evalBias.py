@@ -27,7 +27,7 @@ def generateAnalogies_parallelogram(analogyTemplates, keyedVecs):
 	return analogies
 
 def scoredAnalogyAnswers(a,b,x, keyedVecs, thresh=12.5):
-	words = [w for w in keyedVecs.vocab if np.linalg.norm(np.array(keyedVecs[w])-np.array(keyedVecs[x])) < thresh]
+	words = [w for w in list(keyedVecs.key_to_index.keys()) if np.linalg.norm(np.array(keyedVecs[w])-np.array(keyedVecs[x])) < thresh]
 
 	def cos(a,b,x,y):
 		aVec = np.array(keyedVecs[a])

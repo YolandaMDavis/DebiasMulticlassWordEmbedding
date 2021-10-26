@@ -32,7 +32,6 @@ def neutralize_and_equalize_with_frequency_removal(vocab, words, eq_sets, bias_s
         raise ValueError("bias subspace should be either a matrix or vector")
 
     freq_vocab = vocab.copy()
-    normalize(freq_vocab)
 
     for word in words:
         vector = vocab[word]
@@ -50,6 +49,8 @@ def neutralize_and_equalize_with_frequency_removal(vocab, words, eq_sets, bias_s
             #print np.linalg.norm(new_v)
             # update embedding
             new_vocab[w] = new_v
+
+    normalize(new_vocab)
 
     for eq_set in eq_sets:
         mean = np.zeros((embedding_dim,))
